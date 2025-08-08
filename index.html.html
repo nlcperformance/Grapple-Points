@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grapple Points</title>
+<style>
+  :root{
+    --bg:#0b0b0b;
+    --panel:#111;
+    --ink:#fff;
+    --muted:#cfcfcf;
+    --line:#2a2a2a;
+    --accent:#e5e5e5;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial;
+  }
+  h1,h2,h3{margin:0 0 .5rem 0}
+  h1{letter-spacing:.02em;font-weight:800}
+  h2{font-weight:700}
+  .wrap{
+    max-width:1100px;
+    margin:0 auto;
+    padding:24px 16px 48px;
+  }
+  .header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    margin-bottom:16px;
+  }
+  .badge{
+    padding:.35rem .6rem;
+    border:1px solid var(--line);
+    border-radius:999px;
+    font-size:.8rem;
+    color:var(--muted);
+  }
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:12px;
+  }
+  @media (max-width:960px){
+    .grid{grid-template-columns:1fr 1fr}
+  }
+  @media (max-width:640px){
+    .grid{grid-template-columns:1fr}
+  }
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:16px;
+  }
+  .card h3{
+    font-size:1rem;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:var(--muted);
+    margin-bottom:.6rem;
+  }
+  fieldset{
+    border:0;
+    margin:0;
+    padding:0;
+  }
+  .item{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:8px 10px;
+    gap:12px;
+    border-top:1px dashed var(--line);
+  }
+  .item:first-child{border-top:0}
+  .item label{display:flex;gap:10px;align-items:center;cursor:pointer}
+  .pts{
+    font-variant-numeric:tabular-nums;
+    color:var(--accent);
+    min-width:2ch;
+    text-align:right;
+  }
+  .cap{font-size:.8rem;color:var(--muted);margin-top:4px}
+  .controls{
+    display:flex;flex-wrap:wrap;gap:10px;margin:16px 0;
+  }
+  button,.btn, select, input[type="number"], input[type="text"]{
+    background:#000;
+    border:1px solid var(--line);
+    color:var(--ink);
+    padding:10px 14px;
+    border-radius:12px;
+    cursor:pointer;
+  }
+  select{cursor:pointer}
+  button:hover{border-color:#444}
+  .btn-ghost{
+    background:transparent;
+  }
+  .stats{
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    gap:10px;
+    margin-top:10px;
+  }
+  .stat{
+    background:#000;
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:10px;
+    text-align:center;
+  }
+  .stat .label{
+    color:var(--muted);
+    font-size:.8rem;
+  }
+  .stat .value{
+    font-size:1.35rem;
+    font-variant-numeric:tabular-nums;
+    margin-top:4px;
+  }
+  .notes{
+    width:100%;min-height:70px;
+    padding:10px;border-radius:12px;border:1px solid var(--line);
+    background:#000;color:var(--ink);
+  }
+  table{
+    width:100%;border-collapse:collapse;margin-top:10px;
+    border:1px solid var(--line);
+    border-radius:12px;overflow:hidden;
+  }
+  th,td{
+    border-bottom:1px solid var(--line);
+    padding:10px;
+    text-align:left;
+    vertical-align:top;
+  }
+  th{background:#0d0d0d;color:var(--muted);font-weight:600}
+  tr:hover td{background:#0b0b0b}
+  .footer{
+    color:var(--muted);font-size:.85rem;margin-top:16px
+  }
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+  .flex{display:flex;gap:10px;align-items:center}
+  .grow{flex:1}
+  .right{margin-left:auto}
+  .tip{color:var(--muted);font-size:.9rem}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div>
+        <h1>Grapple Points</h1>
+        <div class="badge">Black &amp; White • Over‑40s BJJ Roll Tracker</div>
+      </div>
+      <div class="controls">
+        <label class="badge" for="belt">Belt</label>
+        <select id="belt" title="Belt level">
+          <option value="White">White</option>
+          <option value="Blue">Blue</option>
+          <option value="Purple">Purple</option>
+          <option value="Brown">Brown</option>
+          <option value="Black">Black</option>
+        </select>
+        <button id="addRoll">Add Roll</button>
+        <button id="resetCurrent" class="btn-ghost">Reset Current</button>
+        <button id="exportCSV" class="btn-ghost">Export CSV</button>
+        <button id="saveJSON" class="btn-ghost">Save Session</button>
+        <button id="loadJSON" class="btn-ghost">Load Session</button>
+        <input type="file" id="jsonFile" accept=".json" class="sr-only">
+      </div>
+    </div>
+
+    <div class="tip" id="beltTip">White belt focus: survive smart, recover guard, build frames &amp; posture.</div>
+
+    <div class="grid">
+      <section class="card" id="attackCard">
+        <h3>Attack <span class="cap">(cap 5)</span></h3>
+        <fieldset data-category="Attack" data-cap="5">
+          <div class="item">
+            <label><input type="checkbox" data-points="5"> Submission finish</label>
+            <div class="pts">+5</div>
+          </div>
+          <div class="item">
+            <label><input type="checkbox" data-points="3"> Deep submission attempt</label>
+            <div class="pts">+3</div>
+          </div>
+          <div class="item">
+            <label><input id="chainCounter" type="number" min="0" max="2" value="0" data-type="counter" data-points="1" style="width:60px"> Chain attacks (0–<span id="chainMax">2</span>)</label>
+            <div class="pts">+1 ea</div>
+          </div>
+          <div class="item">
+            <label><input type="checkbox" data-points="2"> Sweep to dominant</label>
+            <div class="pts">+2</div>
+          </div>
+          <div class="item">
+            <label><input id="progCounter" type="number" min="0" max="3" value="0" data-type="counter" data-points="1" style="width:60px"> Positional progressions (0–<span id="progMax">3</span>)</label>
+            <div class="pts">+1 ea</div>
+          </div>
+          <div class="item">
+            <label class="flex grow">Adjustment <span class="badge">‑3…+3</span></label>
+            <input type="number" min="-3" max="3" value="0" data-type="adjust" style="width:80px">
+          </div>
+        </fieldset>
+        <div class="stats">
+          <div class="stat"><div class="label">Attack</div><div class="value" id="AttackScore">0</div></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h3>Defence <span class="cap">(cap 5)</span></h3>
+        <fieldset data-category="Defence" data-cap="5">
+          <div class="item">
+            <label><input type="checkbox" data-points="3"> Escape from submission</label>
+            <div class="pts">+3</div>
+          </div>
+          <div class="item">
+            <label><input type="checkbox" data-points="2"> Escape dominant position</label>
+            <div class="pts">+2</div>
+          </div>
+          <div class="item">
+            <label><input type="number" min="0" max="3" value="0" data-type="counter" data-points="1" style="width:60px"> Guard recoveries</label>
+            <div class="pts">+1 ea</div>
+          </div>
+          <div class="item">
+            <label><input type="checkbox" data-points="1"> Survived bad spot (20+ s)</label>
+            <div class="pts">+1</div>
+          </div>
+          <div class="item">
+            <label class="flex grow">Adjustment <span class="badge">‑3…+3</span></label>
+            <input type="number" min="-3" max="3" value="0" data-type="adjust" style="width:80px">
+          </div>
+        </fieldset>
+        <div class="stats">
+          <div class="stat"><div class="label">Defence</div><div class="value" id="DefenceScore">0</div></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h3>Control <span class="cap">(cap 5)</span></h3>
+        <fieldset data-category="Control" data-cap="5">
+          <div class="item">
+            <label><input type="checkbox" data-points="3"> Secure dominant (<span id="domSec">10</span>+ s)</label>
+            <div class="pts">+3</div>
+          </div>
+          <div class="item">
+            <label><input type="checkbox" data-points="1"> Half guard control</label>
+            <div class="pts">+1</div>
+          </div>
+          <div class="item">
+            <label><input type="checkbox" data-points="2"> Back control (<span id="backSec">10</span>+ s)</label>
+            <div class="pts">+2</div>
+          </div>
+          <div class="item">
+            <label><input type="checkbox" data-points="1"> Pressure pin / immobilise</label>
+            <div class="pts">+1</div>
+          </div>
+          <div class="item">
+            <label class="flex grow">Adjustment <span class="badge">‑3…+3</span></label>
+            <input type="number" min="-3" max="3" value="0" data-type="adjust" style="width:80px">
+          </div>
+        </fieldset>
+        <div class="stats">
+          <div class="stat"><div class="label">Control</div><div class="value" id="ControlScore">0</div></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h3>Mindset &amp; Efficiency <span class="cap">(cap 5)</span></h3>
+        <fieldset data-category="Mindset" data-cap="5">
+          <div class="item">
+            <label><input type="checkbox" data-points="2"> Calm under attack</label>
+            <div class="pts">+2</div>
+          </div>
+          <div class="item">
+            <label><input type="checkbox" data-points="1"> Patience in setup</label>
+            <div class="pts">+1</div>
+          </div>
+          <div class="item">
+            <label><input type="checkbox" data-points="1"> Risk management</label>
+            <div class="pts">+1</div>
+          </div>
+          <div class="item" id="baitRow">
+            <label><input id="baitChk" type="checkbox" data-points="2"> Bait &amp; counter</label>
+            <div class="pts">+2</div>
+          </div>
+          <div class="item">
+            <label class="flex grow">Adjustment <span class="badge">‑3…+3</span></label>
+            <input type="number" min="-3" max="3" value="0" data-type="adjust" style="width:80px">
+          </div>
+        </fieldset>
+        <div class="stats">
+          <div class="stat"><div class="label">Mindset</div><div class="value" id="MindsetScore">0</div></div>
+        </div>
+      </section>
+    </div>
+
+    <section class="card" style="margin-top:12px">
+      <h3>Roll Meta</h3>
+      <div class="controls">
+        <div class="flex grow">
+          <label class="badge">Partner</label>
+          <input id="partner" placeholder="name/belt/weight" class="grow" type="text">
+        </div>
+        <div class="flex">
+          <label class="badge">Gi?</label>
+          <input type="checkbox" id="isGi" aria-label="Gi">
+        </div>
+        <div class="flex">
+          <label class="badge">Round (min)</label>
+          <input type="number" id="roundMin" min="1" max="10" value="5" style="width:80px">
+        </div>
+        <div class="flex">
+          <label class="badge">RPE</label>
+          <input type="number" id="rpe" min="1" max="10" value="6" style="width:80px">
+        </div>
+      </div>
+      <textarea id="notes" class="notes" placeholder="Best moment, under‑pressure point, one focus for next roll..."></textarea>
+      <div class="stats">
+        <div class="stat"><div class="label">Attack</div><div class="value" id="AttackCap">0</div></div>
+        <div class="stat"><div class="label">Defence</div><div class="value" id="DefenceCap">0</div></div>
+        <div class="stat"><div class="label">Control</div><div class="value" id="ControlCap">0</div></div>
+        <div class="stat"><div class="label">Mindset</div><div class="value" id="MindsetCap">0</div></div>
+        <div class="stat"><div class="label">Raw Total</div><div class="value" id="TotalScore">0</div></div>
+        <div class="stat"><div class="label">Weighted Total</div><div class="value" id="WeightedTotal">0</div></div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:12px">
+      <h3>History</h3>
+      <table id="historyTable" aria-describedby="historyHelp">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Date</th>
+            <th>Belt</th>
+            <th>Partner</th>
+            <th>Gi</th>
+            <th>RPE</th>
+            <th>A</th>
+            <th>D</th>
+            <th>C</th>
+            <th>M</th>
+            <th>Raw</th>
+            <th>Weighted</th>
+            <th>Notes</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <div id="historyHelp" class="footer">Tip: “Add Roll” between rounds. “Save Session” exports JSON (load later). “Export CSV” gives a spreadsheet-friendly file.</div>
+    </section>
+
+    <div class="footer">© NLC Performance · Grapple Points · v1.1</div>
+  </div>
+
+<script>
+(function(){
+  const BELTS = {
+    White:   { chainMax:1, progMax:2, domSec:7,  backSec:7,  baitEnabled:false, tip:"White belt focus: survive smart, recover guard, build frames & posture.", multipliers:{A:1.00,D:1.10,C:1.10,M:1.00} },
+    Blue:    { chainMax:2, progMax:3, domSec:9,  backSec:9,  baitEnabled:false, tip:"Blue: add reliable sweeps & posture control; layer basic subs.", multipliers:{A:1.00,D:1.05,C:1.10,M:1.00} },
+    Purple:  { chainMax:3, progMax:4, domSec:10, backSec:10, baitEnabled:true,  tip:"Purple: chain attacks and back takes; start trap-based counters.", multipliers:{A:1.10,D:1.00,C:1.00,M:1.05} },
+    Brown:   { chainMax:3, progMax:5, domSec:12, backSec:12, baitEnabled:true,  tip:"Brown: pressure passing & finishing detail; pace control.", multipliers:{A:1.15,D:0.95,C:1.00,M:1.10} },
+    Black:   { chainMax:4, progMax:6, domSec:15, backSec:15, baitEnabled:true,  tip:"Black: efficiency first; trap, constrain, and finish with minimal effort.", multipliers:{A:1.20,D:0.90,C:1.00,M:1.10} }
+  };
+
+  const byId = (id)=>document.getElementById(id);
+  const qsa = (sel,root=document)=>Array.from(root.querySelectorAll(sel));
+
+  const categoryIds = ["Attack","Defence","Control","Mindset"];
+  const state = { history: [] };
+
+  function clamp(v,min,max){return Math.min(max,Math.max(min,v));}
+  function escapeHtml(s){
+    return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  function calcCategory(fs){
+    const cap = Number(fs.dataset.cap||5);
+    let subtotal = 0;
+    qsa('input[type="checkbox"]', fs).forEach(chk=>{ if(chk.checked){ subtotal += Number(chk.dataset.points||0); } });
+    qsa('input[data-type="counter"]', fs).forEach(inp=>{
+      const count = clamp(Number(inp.value||0), Number(inp.min||0), Number(inp.max||99));
+      subtotal += count * Number(inp.dataset.points||0);
+    });
+    const adjust = qsa('input[data-type="adjust"]', fs).reduce((acc,inp)=>acc + Number(inp.value||0), 0);
+    subtotal = subtotal + adjust;
+    subtotal = Math.max(0, Math.min(cap, subtotal));
+    return {score: subtotal, cap};
+  }
+
+  function recalc(){
+    let rawTotal = 0;
+    const beltKey = byId('belt').value;
+    const mult = BELTS[beltKey].multipliers;
+    let weighted = 0;
+
+    categoryIds.forEach(cat=>{
+      const fs = document.querySelector('fieldset[data-category="'+cat+'"]');
+      const {score, cap} = calcCategory(fs);
+      byId(cat+'Score').textContent = score;
+      byId(cat+'Cap').textContent = score;
+      rawTotal += score;
+      const m = (cat==='Attack')?mult.A : (cat==='Defence')?mult.D : (cat==='Control')?mult.C : mult.M;
+      weighted += score * m;
+    });
+
+    byId('TotalScore').textContent = rawTotal.toFixed(0);
+    byId('WeightedTotal').textContent = Math.round(weighted);
+  }
+
+  function resetCurrent(){
+    qsa('fieldset input').forEach(el=>{
+      if(el.type==='checkbox'){ el.checked=false; }
+      else if(el.dataset.type==='counter' || el.dataset.type==='adjust'){ el.value = 0; }
+    });
+    byId('partner').value='';
+    byId('notes').value='';
+    byId('isGi').checked=false;
+    byId('rpe').value=6;
+    byId('roundMin').value=5;
+    recalc();
+  }
+
+  function addRoll(){
+    const entry = { date: new Date().toISOString() };
+    let raw = 0, weighted = 0;
+    const beltKey = byId('belt').value;
+    const mult = BELTS[beltKey].multipliers;
+    categoryIds.forEach(cat=>{
+      const fs = document.querySelector('fieldset[data-category="'+cat+'"]');
+      const {score} = calcCategory(fs);
+      entry[cat] = score;
+      raw += score;
+      const m = (cat==='Attack')?mult.A : (cat==='Defence')?mult.D : (cat==='Control')?mult.C : mult.M;
+      weighted += score * m;
+    });
+    entry.total = Math.round(raw);
+    entry.weighted = Math.round(weighted);
+    entry.partner = byId('partner').value.trim();
+    entry.isGi = byId('isGi').checked;
+    entry.rpe = Number(byId('rpe').value||0);
+    entry.roundMin = Number(byId('roundMin').value||0);
+    entry.notes = byId('notes').value.trim();
+    entry.belt = beltKey;
+    state.history.push(entry);
+    renderHistory();
+    resetCurrent();
+  }
+
+  function renderHistory(){
+    const tbody = byId('historyTable').querySelector('tbody');
+    tbody.innerHTML = '';
+    state.history.forEach((row,idx)=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${idx+1}</td>
+        <td>${new Date(row.date).toLocaleString()}</td>
+        <td>${escapeHtml(row.belt||'')}</td>
+        <td>${escapeHtml(row.partner||'')}</td>
+        <td>${row.isGi?'Gi':'No‑Gi'}</td>
+        <td>${row.rpe||''}</td>
+        <td>${row.Attack}</td>
+        <td>${row.Defence}</td>
+        <td>${row.Control}</td>
+        <td>${row.Mindset}</td>
+        <td><strong>${row.total}</strong></td>
+        <td><strong>${row.weighted}</strong></td>
+        <td>${escapeHtml(row.notes||'')}</td>
+        <td><button data-act="del" data-idx="${idx}">✕</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+    recalc();
+  }
+
+  function exportCSV(){
+    if(state.history.length===0){ alert('No rolls to export yet.'); return; }
+    const headers = ["#","Date","Belt","Partner","Gi","RPE","RoundMin","Attack","Defence","Control","Mindset","RawTotal","WeightedTotal","Notes"];
+    const rows = state.history.map((r,i)=>[
+      i+1,
+      new Date(r.date).toISOString(),
+      r.belt||'',
+      r.partner||'',
+      r.isGi?'Gi':'No-Gi',
+      r.rpe,
+      r.roundMin,
+      r.Attack,
+      r.Defence,
+      r.Control,
+      r.Mindset,
+      r.total,
+      r.weighted,
+      (r.notes||'').replace(/\n/g,' ')
+    ]);
+    const csv = [headers].concat(rows).map(cols=>cols.map(v=>{
+      const s = String(v);
+      return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+    }).join(',')).join('\n');
+
+    const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'grapple_points.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function saveJSON(){
+    const payload = {version:"1.1", created:new Date().toISOString(), history: state.history};
+    const blob = new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'grapple_points_session.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function loadJSONFile(){ byId('jsonFile').click(); }
+  function handleFile(e){
+    const file = e.target.files[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev)=>{
+      try{
+        const data = JSON.parse(ev.target.result);
+        if(Array.isArray(data.history)) state.history = data.history;
+        else if(Array.isArray(data)) state.history = data;
+        else throw new Error('Invalid file format');
+        renderHistory();
+      }catch(err){ alert('Could not load file: '+err.message); }
+    };
+    reader.readAsText(file);
+  }
+
+  function updateBeltUI(){
+    const beltKey = byId('belt').value;
+    const cfg = BELTS[beltKey];
+    // counters
+    const chain = byId('chainCounter');
+    const prog  = byId('progCounter');
+    chain.max = cfg.chainMax; byId('chainMax').textContent = cfg.chainMax;
+    prog.max  = cfg.progMax;  byId('progMax').textContent  = cfg.progMax;
+    // time thresholds labels
+    byId('domSec').textContent = cfg.domSec;
+    byId('backSec').textContent = cfg.backSec;
+    // bait availability
+    const baitRow = byId('baitRow'); const baitChk = byId('baitChk');
+    baitRow.style.opacity = cfg.baitEnabled ? '1' : '.5';
+    baitChk.disabled = !cfg.baitEnabled;
+    if(!cfg.baitEnabled){ baitChk.checked = false; }
+    // tip
+    byId('beltTip').textContent = cfg.tip;
+    recalc();
+  }
+
+  // Event wiring
+  qsa('fieldset input').forEach(el=>{
+    el.addEventListener('input', recalc);
+    el.addEventListener('change', recalc);
+  });
+  byId('addRoll').addEventListener('click', addRoll);
+  byId('resetCurrent').addEventListener('click', resetCurrent);
+  byId('exportCSV').addEventListener('click', exportCSV);
+  byId('saveJSON').addEventListener('click', saveJSON);
+  byId('loadJSON').addEventListener('click', loadJSONFile);
+  byId('jsonFile').addEventListener('change', handleFile);
+  byId('belt').addEventListener('change', updateBeltUI);
+
+  byId('historyTable').addEventListener('click', (e)=>{
+    const btn = e.target.closest('button[data-act="del"]');
+    if(!btn) return;
+    const idx = Number(btn.dataset.idx);
+    if(Number.isInteger(idx)){
+      state.history.splice(idx,1);
+      renderHistory();
+    }
+  });
+
+  // Persist in localStorage
+  function persist(){ try{ localStorage.setItem('grapple_points_history', JSON.stringify(state.history)); }catch{} }
+  function restore(){
+    try{
+      const raw = localStorage.getItem('grapple_points_history');
+      if(raw){
+        state.history = JSON.parse(raw)||[];
+        renderHistory();
+      }
+    }catch{}
+  }
+  window.addEventListener('beforeunload', persist);
+
+  restore();
+  updateBeltUI();
+  recalc();
+})();
+</script>
+</body>
+</html>
